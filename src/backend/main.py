@@ -17,5 +17,6 @@ app = FastAPI(
     description="Welcome to Holdmybeer API documentation!",
     lifespan=lifespan_check
 )
+
 app.include_router(api_router, prefix="/api")
 app.add_exception_handler(Exception, custom_exception_handler)

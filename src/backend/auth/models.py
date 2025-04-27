@@ -10,7 +10,7 @@ from .enums import UserPermissionRole, UserVerificationStatus
 class UserBaseModel(CustomBase):
     __tablename__ = "users_base"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     hash_password: Mapped[str] = mapped_column(String)
     is_banned: Mapped[bool] = mapped_column(default=False)

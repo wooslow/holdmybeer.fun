@@ -1,20 +1,19 @@
-import os
-from datetime import datetime, timedelta
+import bcrypt
 from passlib.context import CryptContext
 
 from dotenv import load_dotenv
-from fastapi import HTTPException, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import jwt, JWTError
+from fastapi.security import HTTPBearer
 
 from .repository import UserRepository
-from .models import UserBaseModel
 from .shemas import UserRegisterSchema, UserBaseSchema
+
 from ..database import DatabaseSession
+from ..email import EmailService
 
 load_dotenv()
 security = HTTPBearer(scheme_name="Authorization")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+bcrypt.__about__ = bcrypt
 
 
 class AuthService:
@@ -32,4 +31,14 @@ class AuthService:
         user.password = self._password_hasher(user.password)
         user_orm = await self.user_repository.create(user)
 
+        await EmailService().send_challenge(user.email, "register")
+
         return UserBaseSchema.from_orm(user_orm)
+
+    async def after_email_verification(self, email: str) -> UserBaseSchema:
+        """ Set email as verified """
+
+        user = await self.user_repository.set_email_verified(email)
+
+        return UserBaseSchema.from_orm(user)
+

@@ -1,19 +1,12 @@
-"""
-
-Repository for user
-
-All methods that interact with the database should be here
-Only database models or nothing should be returned from this class
-
-"""
 import datetime
 import json
+from json import JSONDecoder
 
 from sqlalchemy.future import select
 
-from .shemas import UserBaseSchema, UserRegisterSchema
+from .shemas import UserRegisterSchema
 from .models import UserBaseModel
-from .exceptions import UserAlreadyExistsException
+from .exceptions import UserAlreadyExistsException, UserNotFoundException
 from .enums import UserPermissionRole, UserVerificationStatus
 
 from ..database import DatabaseSession, redis
@@ -23,10 +16,21 @@ class UserRepository:
     def __init__(self, database: DatabaseSession) -> None:
         self.database: DatabaseSession = database
 
-    def default_serializer(self, obj):
+    @staticmethod
+    def _default_serializer(obj):
         if isinstance(obj, datetime.datetime):
-            return obj.isoformat()  # Convert datetime to ISO 8601 string
+            return obj.isoformat()
         raise TypeError(f"Type {type(obj)} not serializable")
+
+    @staticmethod
+    def _datetime_decoder(dct):
+        for key, value in dct.items():
+            if key in ['created_at', 'last_login'] and isinstance(value, str):
+                try:
+                    dct[key] = datetime.datetime.fromisoformat(value)
+                except ValueError:
+                    pass
+        return dct
 
     async def get(self, email: str) -> UserBaseModel:
         """ Get user by email """
@@ -34,16 +38,19 @@ class UserRepository:
         user_data = await redis.get(f"user:{email}")
 
         if user_data:
-            user_dict = json.loads(user_data)
+            user_dict = json.loads(user_data, object_hook=self._datetime_decoder)
             return UserBaseModel(**user_dict)
 
         query = select(UserBaseModel).where(UserBaseModel.email == email)
-        async with self.database as session:  # Use self.database directly, no parentheses
+        async with self.database as session:
             result = await session.execute(query)
             user = result.scalars().first()
 
             if user:
-                await redis.set(f"user:{email}", json.dumps(user.model_dump(), default=self.default_serializer))
+                await redis.set(
+                    f"user:{email}",
+                    json.dumps(user.model_dump(), default=self._default_serializer)
+                )
 
             return user
 
@@ -61,14 +68,63 @@ class UserRepository:
             is_banned=False,
             permissions=UserPermissionRole.USER.value,
             verification_status=UserVerificationStatus.NOT_CONFIRMED.value,
-            last_login=datetime.datetime.now(),
-            created_at=datetime.datetime.now(),
+            last_login=datetime.datetime.utcnow(),
         )
 
         async with self.database as session:
             session.add(db_user)
             await session.commit()
 
-        await redis.set(f"user:{db_user.email}", json.dumps(db_user.model_dump(), default=self.default_serializer))
+        await redis.set(
+            f"user:{db_user.email}",
+            json.dumps(db_user.model_dump(),
+            default=self._default_serializer),
+            ex=300
+        )
 
         return db_user
+
+    async def update(self, email: str, update_data: dict) -> UserBaseModel:  # TODO: Transfer to UserService
+        """ Update user information """
+        async with self.database as session:
+            result = await session.execute(
+                select(UserBaseModel).where(UserBaseModel.email == email)
+            )
+            user = result.scalars().first()
+
+            if not user:
+                raise UserNotFoundException()
+            allowed_fields = {
+                'hash_password',
+                'is_banned',
+                'permissions',
+                'verification_status'
+            }
+
+            for field, value in update_data.items():
+                if field in allowed_fields:
+                    setattr(user, field, value)
+
+            user.last_login = datetime.datetime.now(datetime.timezone.utc)
+
+            try:
+                await session.commit()
+                await session.refresh(user)
+            except Exception as e:
+                await session.rollback()
+                raise
+
+            await redis.set(
+                f"user:{user.email}",
+                json.dumps(user.model_dump(), default=self._default_serializer),
+                ex=300
+            )
+
+            return user
+
+    async def set_email_verified(self, email: str) -> UserBaseModel:
+        """ Set email as verified """
+        return await self.update(
+            email=email,
+            update_data={"verification_status": UserVerificationStatus.CONFIRMED.value}
+        )
