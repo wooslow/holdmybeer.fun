@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "holdmybeer-fun"
+version = "0.0.1"
+description = "A simple, fun, and easy-to-use web application for sharing temporary links and images."
+authors = ["Earl <84588908+wooslow@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "holdmybeer"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.12"
+uvicorn = {extras = ["standard"], version = "^0.34.2"}
+jinja2 = "^3.1.6"
+sqlalchemy = "^2.0.40"
+alembic = "^1.15.2"
+python-dotenv = "^1.1.0"
+redis = "^5.2.1"
+pydantic = "^2.11.3"
+passlib = "^1.7.4"
+python-jose = "^3.4.0"
+asyncpg = "^0.30.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
