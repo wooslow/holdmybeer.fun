@@ -1,8 +1,7 @@
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 
-
-from .auth import UserAlreadyExistsException
+from .auth import UserAlreadyExistsException, UserNotFoundException
 
 
 async def custom_exception_handler(request: Request, exc: Exception):
@@ -10,6 +9,11 @@ async def custom_exception_handler(request: Request, exc: Exception):
         return JSONResponse(
             status_code=409,
             content={"message": str(exc)},
+        )
+    elif isinstance(exc, UserNotFoundException):
+        return JSONResponse(
+            status_code=401,
+            content={"message": "Incorrect email or password"},
         )
     else:
         return JSONResponse(

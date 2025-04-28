@@ -1,6 +1,5 @@
 import datetime
 import json
-from json import JSONDecoder
 
 from sqlalchemy.future import select
 
@@ -68,7 +67,7 @@ class UserRepository:
             is_banned=False,
             permissions=UserPermissionRole.USER.value,
             verification_status=UserVerificationStatus.NOT_CONFIRMED.value,
-            last_login=datetime.datetime.utcnow(),
+            last_login=datetime.datetime.now(),
         )
 
         async with self.database as session:
@@ -77,8 +76,10 @@ class UserRepository:
 
         await redis.set(
             f"user:{db_user.email}",
-            json.dumps(db_user.model_dump(),
-            default=self._default_serializer),
+            json.dumps(
+                db_user.model_dump(),
+                default=self._default_serializer
+            ),
             ex=300
         )
 
@@ -116,13 +117,16 @@ class UserRepository:
 
             await redis.set(
                 f"user:{user.email}",
-                json.dumps(user.model_dump(), default=self._default_serializer),
+                json.dumps(
+                    user.model_dump(),
+                    default=self._default_serializer
+                ),
                 ex=300
             )
 
             return user
 
-    async def set_email_verified(self, email: str) -> UserBaseModel:
+    async def set_email_verified(self, email: str) -> UserBaseModel:  # TODO: Transfer to UserService
         """ Set email as verified """
         return await self.update(
             email=email,

@@ -1,19 +1,24 @@
+import os
 import bcrypt
 from passlib.context import CryptContext
+from datetime import timedelta, datetime
 
 from dotenv import load_dotenv
 from fastapi.security import HTTPBearer
+from jose import jwt
 
 from .repository import UserRepository
-from .shemas import UserRegisterSchema, UserBaseSchema
+from .shemas import UserRegisterSchema, UserBaseSchema, UserLoginSchema, UserTokensSchema
+from .exceptions import UserNotFoundException
 
 from ..database import DatabaseSession
 from ..email import EmailService
 
 load_dotenv()
+
 security = HTTPBearer(scheme_name="Authorization")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-bcrypt.__about__ = bcrypt
+bcrypt.__about__ = bcrypt  # Fix a AttributeError in passlib type: ignore
 
 
 class AuthService:
@@ -25,7 +30,28 @@ class AuthService:
         """ Hash a password using bcrypt """
         return pwd_context.hash(password)
 
-    async def register_user(self, user: UserRegisterSchema) -> UserBaseSchema:
+    @staticmethod
+    def _password_checker(plain_password: str, hashed_password: str) -> bool:
+        """ Check a password against its hash """
+        return pwd_context.verify(plain_password, hashed_password)
+
+    @staticmethod
+    def __encode_token(data: dict, expires_delta: timedelta) -> str:
+        """ Encode a JWT token with an expiration time """
+        payload = data.copy()
+        payload.update({"exp": datetime.now() + expires_delta})
+
+        return jwt.encode(payload, os.getenv("SECRET_KEY"), algorithm="HS256")
+
+    @staticmethod
+    def _create_tokens(data: dict) -> UserTokensSchema:
+        """Generate access and refresh tokens"""
+        access_token = AuthService.__encode_token(data, timedelta(minutes=40))
+        refresh_token = AuthService.__encode_token(data, timedelta(days=7))
+
+        return UserTokensSchema(access_token=access_token, refresh_token=refresh_token)
+
+    async def register(self, user: UserRegisterSchema) -> UserBaseSchema:
         """ Function to register a new user """
 
         user.password = self._password_hasher(user.password)
@@ -42,3 +68,14 @@ class AuthService:
 
         return UserBaseSchema.from_orm(user)
 
+    async def login(self, credentials: UserLoginSchema) -> UserTokensSchema:
+        """ Authenticate user and return JWT tokens """
+
+        found_user = await self.user_repository.get(email=credentials.email)
+
+        if not found_user or not self._password_checker(credentials.password, found_user.hash_password):
+            raise UserNotFoundException()
+
+        tokens = self._create_tokens({"email": found_user.email, "id": found_user.id})
+
+        return tokens
