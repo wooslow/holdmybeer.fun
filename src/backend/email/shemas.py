@@ -10,7 +10,3 @@ class EmailChallengeSchema(BaseModel):
 class EmailVerifyChallengeSchema(BaseModel):
     email: str
     code: str
-
-
-class EmailAfterChallengeSchema(BaseModel):
-    result: bool

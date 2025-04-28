@@ -28,16 +28,22 @@ class EmailRepository:
         self.api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
             sib_api_v3_sdk.ApiClient(configuration)
         )
+        logger.info("Email API client initialized.")
 
     async def create_challenge(self, email: str, type_of_challenge: str) -> dict:
         """Create and send a challenge code to the user's email."""
         code = str(randint(100000, 999999))
 
+        if type_of_challenge == "register":
+            html = HTML_CODE.replace("{{CODE}}", code)
+        else:
+            html = HTML_CODE.replace("{{CODE}}", code)  # TODO: Edit to password reset
+
         send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": email}],
             sender={"email": "no-reply@holdmybeer.fun", "name": "HoldMyBeer Fun"},
             subject="Verify Your Email Address",
-            html_content=HTML_CODE.replace("{{CODE}}", code)
+            html_content=html.replace("{{CODE}}", code)
         )
 
         try:
