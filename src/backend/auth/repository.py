@@ -11,7 +11,7 @@ from .enums import UserPermissionRole, UserVerificationStatus
 from ..database import DatabaseSession, redis
 
 
-class UserRepository:
+class AuthRepository:
     def __init__(self, database: DatabaseSession) -> None:
         self.database: DatabaseSession = database
 
