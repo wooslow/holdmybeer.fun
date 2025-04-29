@@ -2,13 +2,11 @@ import os
 import json
 import logging
 from random import randint
-from datetime import timedelta
 
 import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
 from dotenv import load_dotenv
 
-from .html import HTML_CODE
+from .html import REGISTER_HTML_CODE, RESET_PASSWORD_HTML_CODE
 from ..database import redis, DatabaseSession
 
 load_dotenv()
@@ -18,10 +16,9 @@ logger = logging.getLogger(__name__)
 
 class EmailRepository:
     def __init__(self) -> None:
-        self.max_age_seconds = int(timedelta(minutes=15).total_seconds())
-        self._init_email_api()
+        self.__init_email_api()
 
-    def _init_email_api(self) -> None:
+    def __init_email_api(self) -> None:
         """Initialize the email API client."""
         configuration = sib_api_v3_sdk.Configuration()
         configuration.api_key["api-key"] = os.getenv("API_KEY_EMAIL")
@@ -30,39 +27,57 @@ class EmailRepository:
         )
         logger.info("Email API client initialized.")
 
-    async def create_challenge(self, email: str, type_of_challenge: str) -> dict:
-        """Create and send a challenge code to the user's email."""
-        code = str(randint(100000, 999999))
-
-        if type_of_challenge == "register":
-            html = HTML_CODE.replace("{{CODE}}", code)
-        else:
-            html = HTML_CODE.replace("{{CODE}}", code)  # TODO: Edit to password reset
-
+    async def _send_mail(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str
+    ) -> dict:
         send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-            to=[{"email": email}],
+            to=[{"email": to_email}],
             sender={"email": "no-reply@holdmybeer.fun", "name": "HoldMyBeer Fun"},
-            subject="Verify Your Email Address",
-            html_content=html.replace("{{CODE}}", code)
+            subject=subject,
+            html_content=html_content
         )
 
         try:
-            await redis.setex(
-                f"challenge:{email}",
-                self.max_age_seconds,
-                json.dumps({"code": code, "email": email, "type_of_challenge": type_of_challenge})
-            )
             self.api_instance.send_transac_email(send_smtp_email)
-            logger.info(f"Verification email sent to {email}.")
+            logger.info(f"Verification email sent to {to_email}.")
             return {"status": "success", "message": "Verification email sent."}
-
-        except ApiException as e:
-            logger.error(f"Failed to send email: {e}")
-            return {"status": "error", "message": "Failed to send verification email."}
-
-        except Exception as e:
-            logger.exception("Unexpected error during email challenge creation.")
+        except Exception as error:
+            logger.exception("Unexpected error during email challenge creation.: %s", error)
             return {"status": "error", "message": "Internal server error."}
+
+    @staticmethod
+    def _generate_code() -> str:
+        """Generate a random 6-digit code."""
+        return str(randint(100000, 999999))
+
+    async def create_challenge(self, email: str, type_of_challenge: str) -> dict:
+        """Create and send a challenge code to the user's email."""
+        code = self._generate_code()
+
+        if type_of_challenge == "register":
+            html = REGISTER_HTML_CODE.replace("{{CODE}}", code)
+        elif type_of_challenge == "reset_password":
+            html = RESET_PASSWORD_HTML_CODE.replace("{{CODE}}", code)
+        else:
+            logger.error(f"Invalid challenge type: {type_of_challenge}")
+            return {"status": "error", "message": "Invalid challenge type."}
+
+        await redis.setex(
+            f"challenge:{email}",
+            900,
+            json.dumps({"code": code, "email": email, "type_of_challenge": type_of_challenge})
+        )
+
+        logger.info(f"Challenge code {code} created for {email}.")
+
+        return await self._send_email(
+            to_email=email,
+            subject="Verification Code",
+            html_content=html
+        )
 
     @staticmethod
     async def verify_challenge(email: str, code: str, database: DatabaseSession) -> dict:
@@ -90,7 +105,7 @@ class EmailRepository:
             await AuthService(database).after_email_verification(email)
 
         await redis.delete(f"challenge:{email}")
-        logger.info(f"Email {email} successfully verified.")
+        logger.info(f"Email {email} successfully verified by {challenge.get('type_of_challenge')}.")
 
         return {
             "status": "success",

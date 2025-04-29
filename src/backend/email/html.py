@@ -1,4 +1,4 @@
-HTML_CODE = """
+REGISTER_HTML_CODE = """
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
     <table width="100%" cellspacing="0" cellpadding="0">
@@ -38,4 +38,6 @@ HTML_CODE = """
     </table>
   </body>
 </html>
+"""
+RESET_PASSWORD_HTML_CODE = """
 """
