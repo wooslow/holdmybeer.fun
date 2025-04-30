@@ -132,3 +132,10 @@ class AuthRepository:
             email=email,
             update_data={"verification_status": UserVerificationStatus.CONFIRMED.value}
         )
+
+    async def update_last_login(self, email: str) -> None:
+        """ Update last login time """
+        await self.update(
+            email=email,
+            update_data={"last_login": datetime.datetime.now()}
+        )

@@ -73,7 +73,7 @@ class EmailRepository:
 
         logger.info(f"Challenge code {code} created for {email}.")
 
-        return await self._send_email(
+        return await self._send_mail(
             to_email=email,
             subject="Verification Code",
             html_content=html

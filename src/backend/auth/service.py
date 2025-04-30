@@ -23,7 +23,7 @@ bcrypt.__about__ = bcrypt  # Fix a AttributeError in passlib type: ignore
 
 class AuthService:
     def __init__(self, database: DatabaseSession) -> None:
-        self.user_repository = AuthRepository(database)
+        self.auth_repository = AuthRepository(database)
 
     @staticmethod
     def _password_hasher(password: str) -> str:
@@ -62,7 +62,7 @@ class AuthService:
             raise EmailNotValidException()
 
         user.password = self._password_hasher(user.password)
-        user_orm = await self.user_repository.create(user)
+        user_orm = await self.auth_repository.create(user)
 
         await EmailService().send_challenge(user.email, "register")
 
@@ -71,19 +71,25 @@ class AuthService:
     async def after_email_verification(self, email: str) -> UserBaseSchema:
         """ Set email as verified """
 
-        user = await self.user_repository.set_email_verified(email)
+        user = await self.auth_repository.set_email_verified(email)
 
         return UserBaseSchema.from_orm(user)
+
+    async def update_last_login(self, email: str) -> None:
+        """ Update the last login time for the user """
+        await self.auth_repository.update_last_login(email)
 
     async def login(self, credentials: UserLoginSchema) -> UserTokensSchema:
         """ Authenticate user and return JWT tokens """
         if not self._email_validator(credentials.email):
             raise EmailNotValidException()
 
-        found_user = await self.user_repository.get(email=credentials.email)
+        found_user = await self.auth_repository.get(email=credentials.email)
 
         if not found_user or not self._password_checker(credentials.password, found_user.hash_password):
             raise UserNotFoundException()
+
+        await self.update_last_login(found_user.email)
 
         tokens = self._create_tokens({"email": found_user.email})
 
