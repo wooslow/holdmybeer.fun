@@ -8,7 +8,7 @@ from fastapi.security import HTTPBearer
 from jose import jwt
 
 from .repository import AuthRepository
-from .shemas import UserRegisterSchema, UserBaseSchema, UserLoginSchema, UserTokensSchema
+from .schemas import UserRegisterSchema, UserBaseSchema, UserLoginSchema, UserTokensSchema
 from .exceptions import UserNotFoundException, EmailNotValidException
 
 from ..database import DatabaseSession

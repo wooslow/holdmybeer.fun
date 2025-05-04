@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Response, Request, HTTPException, status
 
 from .service import AuthService
-from .shemas import UserBaseSchema, UserRegisterSchema, UserLoginSchema, UserTokensSchema
+from .schemas import UserBaseSchema, UserRegisterSchema, UserLoginSchema, UserTokensSchema
 from ..database import DatabaseSession
 
 logger = logging.getLogger(__name__)

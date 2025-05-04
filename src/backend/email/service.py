@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
 from .repository import EmailRepository
-from .shemas import EmailChallengeSchema, EmailVerifyChallengeSchema
+from .schemas import EmailChallengeSchema, EmailVerifyChallengeSchema
 
 from ..database import DatabaseSession
 

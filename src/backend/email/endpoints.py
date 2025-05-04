@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter
 
 from .service import EmailService
-from .shemas import EmailChallengeSchema, EmailVerifyChallengeSchema
+from .schemas import EmailChallengeSchema, EmailVerifyChallengeSchema
 from ..database import DatabaseSession
 
 logger = logging.getLogger(__name__)

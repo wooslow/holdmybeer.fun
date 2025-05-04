@@ -3,7 +3,7 @@ import json
 
 from sqlalchemy.future import select
 
-from .shemas import UserRegisterSchema
+from .schemas import UserRegisterSchema
 from .models import UserBaseModel
 from .exceptions import UserAlreadyExistsException, UserNotFoundException
 from .enums import UserPermissionRole, UserVerificationStatus
