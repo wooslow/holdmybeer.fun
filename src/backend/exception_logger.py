@@ -7,8 +7,8 @@ from .auth import UserAlreadyExistsException, UserNotFoundException
 async def custom_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, UserAlreadyExistsException):
         return JSONResponse(
-            status_code=409,
-            content={"message": str(exc)},
+            status_code=401,
+            content={"message": "User already exists"},
         )
     elif isinstance(exc, UserNotFoundException):
         return JSONResponse(

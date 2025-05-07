@@ -26,6 +26,11 @@ class AuthService:
         self.auth_repository = AuthRepository(database)
 
     @staticmethod
+    def _password_generator() -> str:
+        """ Generate a random password """
+        return bcrypt.gensalt().decode('utf-8')
+
+    @staticmethod
     def _password_hasher(password: str) -> str:
         """ Hash a password using bcrypt """
         return pwd_context.hash(password)
@@ -110,3 +115,23 @@ class AuthService:
         tokens = self._create_tokens({"email": email})
 
         return tokens
+
+    async def reset_password(self, email: str) -> None:
+        """ Reset user password """
+        if not self._email_validator(email):
+            raise EmailNotValidException()
+
+        found_user = await self.auth_repository.get(email=email)
+
+        if not found_user:
+            raise UserNotFoundException("If the email exists, a reset password link will be sent to it. Please check your inbox.")
+
+        await EmailService().send_challenge(email, "reset_password")
+
+    async def after_password_reset(self, email: str) -> None:
+        """ Set password as reset """
+
+        new_password = self._password_hasher(self._password_generator())
+
+        await self.auth_repository.update(email, {"hash_password": new_password})
+        await EmailService().send_mail(email, "new_password", new_password)

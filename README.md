@@ -44,3 +44,5 @@ A simple, fun, and easy-to-use web application for sharing temporary links and i
 3. Run the docker compose `docker-compose up --build -d`
 
 </details>
+
+[sentry-url](https://holdmybeer.sentry.io)

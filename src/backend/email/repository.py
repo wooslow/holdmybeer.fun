@@ -103,6 +103,9 @@ class EmailRepository:
         if challenge.get("type_of_challenge") == "register":
             logger.info(f"User {email} is registering.")
             await AuthService(database).after_email_verification(email)
+        elif challenge.get("type_of_challenge") == "reset_password":
+            logger.info(f"User {email} is resetting password.")
+            await AuthService(database).after_password_reset(email)
 
         await redis.delete(f"challenge:{email}")
         logger.info(f"Email {email} successfully verified by {challenge.get('type_of_challenge')}.")

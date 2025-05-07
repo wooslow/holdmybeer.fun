@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Response, Request, HTTPException, status
 
 from .service import AuthService
-from .schemas import UserBaseSchema, UserRegisterSchema, UserLoginSchema, UserTokensSchema
+from .schemas import UserBaseSchema, UserRegisterSchema, UserLoginSchema, UserTokensSchema, UserPasswordResetSchema
 from ..database import DatabaseSession
 
 logger = logging.getLogger(__name__)
@@ -78,11 +78,9 @@ async def refresh(request: Request, response: Response, database: DatabaseSessio
     return tokens
 
 
-@auth_router.get("/reset-password")
-async def reset_password():
-    ...
-
-
 @auth_router.post("/reset-password")
-async def request_reset_password():
-    ...
+async def reset_password(credentials: UserPasswordResetSchema, database: DatabaseSession):
+    """Reset user password"""
+
+    auth_service = AuthService(database)
+    return await auth_service.reset_password(credentials.email)

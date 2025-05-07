@@ -25,3 +25,7 @@ class UserTokensSchema(BaseModel):
 class UserLoginSchema(BaseModel):
     email: str
     password: str
+
+
+class UserPasswordResetSchema(BaseModel):
+    email: str
